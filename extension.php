@@ -9,6 +9,13 @@ final class SelectiveImageProxyExtension extends Minz_Extension {
     private const DEFAULT_SCHEME_DEFAULT = 'auto';
     private const DEFAULT_SCHEME_INCLUDE = false;
     private const DEFAULT_URL_ENCODE = true;
+    private const CONFIG_PROXY_URL = 'selective_image_proxy_url';
+    private const CONFIG_TARGET_FEED_IDS = 'selective_image_proxy_target_feed_ids';
+    private const CONFIG_SCHEME_HTTP = 'selective_image_proxy_scheme_http';
+    private const CONFIG_SCHEME_HTTPS = 'selective_image_proxy_scheme_https';
+    private const CONFIG_SCHEME_DEFAULT = 'selective_image_proxy_scheme_default';
+    private const CONFIG_SCHEME_INCLUDE = 'selective_image_proxy_scheme_include';
+    private const CONFIG_URL_ENCODE = 'selective_image_proxy_url_encode';
 
     public function init() {
         parent::init();
@@ -35,13 +42,14 @@ final class SelectiveImageProxyExtension extends Minz_Extension {
             $schemeDefault = self::DEFAULT_SCHEME_DEFAULT;
         }
 
-        $this->setUserConfigurationValue('proxy_url', $proxyUrl);
-        $this->setUserConfigurationValue('target_feed_ids', $targetFeedIds);
-        $this->setUserConfigurationValue('scheme_http', Minz_Request::paramBoolean('scheme_http'));
-        $this->setUserConfigurationValue('scheme_https', Minz_Request::paramBoolean('scheme_https'));
-        $this->setUserConfigurationValue('scheme_default', $schemeDefault);
-        $this->setUserConfigurationValue('scheme_include', Minz_Request::paramBoolean('scheme_include'));
-        $this->setUserConfigurationValue('url_encode', Minz_Request::paramBoolean('url_encode'));
+        FreshRSS_Context::userConf()->_attribute(self::CONFIG_PROXY_URL, $proxyUrl);
+        FreshRSS_Context::userConf()->_attribute(self::CONFIG_TARGET_FEED_IDS, $targetFeedIds);
+        FreshRSS_Context::userConf()->_attribute(self::CONFIG_SCHEME_HTTP, Minz_Request::paramBoolean('scheme_http'));
+        FreshRSS_Context::userConf()->_attribute(self::CONFIG_SCHEME_HTTPS, Minz_Request::paramBoolean('scheme_https'));
+        FreshRSS_Context::userConf()->_attribute(self::CONFIG_SCHEME_DEFAULT, $schemeDefault);
+        FreshRSS_Context::userConf()->_attribute(self::CONFIG_SCHEME_INCLUDE, Minz_Request::paramBoolean('scheme_include'));
+        FreshRSS_Context::userConf()->_attribute(self::CONFIG_URL_ENCODE, Minz_Request::paramBoolean('url_encode'));
+        FreshRSS_Context::userConf()->save();
     }
 
     public function setImageProxyHook(FreshRSS_Entry $entry): FreshRSS_Entry {
@@ -66,7 +74,7 @@ final class SelectiveImageProxyExtension extends Minz_Extension {
      * @return list<int>
      */
     private function getConfiguredFeedIds(): array {
-        $configured = $this->getUserConfigurationArray('target_feed_ids') ?? [];
+        $configured = FreshRSS_Context::userConf()->attributeArray(self::CONFIG_TARGET_FEED_IDS) ?? [];
         $feedIds = [];
 
         foreach ($configured as $feedId) {
@@ -109,11 +117,11 @@ final class SelectiveImageProxyExtension extends Minz_Extension {
     }
 
     private function getConfiguredBool(string $key, bool $default): bool {
-        return $this->getUserConfigurationBool($key) ?? $default;
+        return FreshRSS_Context::userConf()->attributeBool($key) ?? $default;
     }
 
     private function getConfiguredString(string $key, string $default): string {
-        return $this->getUserConfigurationString($key) ?? $default;
+        return FreshRSS_Context::userConf()->attributeString($key) ?? $default;
     }
 
     private function getProxyImageUri(string $url): string {
@@ -121,17 +129,17 @@ final class SelectiveImageProxyExtension extends Minz_Extension {
         $scheme = is_array($parsedUrl) ? strtolower($parsedUrl['scheme'] ?? '') : '';
 
         if ($scheme === 'http') {
-            if (!$this->getConfiguredBool('scheme_http', self::DEFAULT_SCHEME_HTTP)) {
+            if (!$this->getConfiguredBool(self::CONFIG_SCHEME_HTTP, self::DEFAULT_SCHEME_HTTP)) {
                 return $url;
             }
-            if (!$this->getConfiguredBool('scheme_include', self::DEFAULT_SCHEME_INCLUDE)) {
+            if (!$this->getConfiguredBool(self::CONFIG_SCHEME_INCLUDE, self::DEFAULT_SCHEME_INCLUDE)) {
                 $url = substr($url, 7);
             }
         } elseif ($scheme === 'https') {
-            if (!$this->getConfiguredBool('scheme_https', self::DEFAULT_SCHEME_HTTPS)) {
+            if (!$this->getConfiguredBool(self::CONFIG_SCHEME_HTTPS, self::DEFAULT_SCHEME_HTTPS)) {
                 return $url;
             }
-            if (!$this->getConfiguredBool('scheme_include', self::DEFAULT_SCHEME_INCLUDE)) {
+            if (!$this->getConfiguredBool(self::CONFIG_SCHEME_INCLUDE, self::DEFAULT_SCHEME_INCLUDE)) {
                 $url = substr($url, 8);
             }
         } elseif ($scheme === '') {
@@ -139,15 +147,15 @@ final class SelectiveImageProxyExtension extends Minz_Extension {
                 return $url;
             }
 
-            $schemeDefault = $this->getConfiguredString('scheme_default', self::DEFAULT_SCHEME_DEFAULT);
+            $schemeDefault = $this->getConfiguredString(self::CONFIG_SCHEME_DEFAULT, self::DEFAULT_SCHEME_DEFAULT);
             if ($schemeDefault === 'auto') {
-                if ($this->getConfiguredBool('scheme_include', self::DEFAULT_SCHEME_INCLUDE)) {
+                if ($this->getConfiguredBool(self::CONFIG_SCHEME_INCLUDE, self::DEFAULT_SCHEME_INCLUDE)) {
                     $url = ((is_string($_SERVER['HTTPS'] ?? null) && strtolower($_SERVER['HTTPS']) !== 'off') ? 'https:' : 'http:') . $url;
                 } else {
                     $url = substr($url, 2);
                 }
             } elseif ($schemeDefault === 'http' || $schemeDefault === 'https') {
-                if ($this->getConfiguredBool('scheme_include', self::DEFAULT_SCHEME_INCLUDE)) {
+                if ($this->getConfiguredBool(self::CONFIG_SCHEME_INCLUDE, self::DEFAULT_SCHEME_INCLUDE)) {
                     $url = $schemeDefault . ':' . $url;
                 } else {
                     $url = substr($url, 2);
@@ -159,11 +167,11 @@ final class SelectiveImageProxyExtension extends Minz_Extension {
             return $url;
         }
 
-        if ($this->getConfiguredBool('url_encode', self::DEFAULT_URL_ENCODE)) {
+        if ($this->getConfiguredBool(self::CONFIG_URL_ENCODE, self::DEFAULT_URL_ENCODE)) {
             $url = rawurlencode($url);
         }
 
-        return $this->getConfiguredString('proxy_url', self::DEFAULT_PROXY_URL) . $url;
+        return $this->getConfiguredString(self::CONFIG_PROXY_URL, self::DEFAULT_PROXY_URL) . $url;
     }
 
     private function getProxySrcSet(string $srcSet): string {

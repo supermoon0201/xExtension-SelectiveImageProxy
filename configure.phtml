@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-$targetFeedIds = $this->getUserConfigurationArray('target_feed_ids') ?? [];
+$targetFeedIds = FreshRSS_Context::userConf()->attributeArray('selective_image_proxy_target_feed_ids') ?? [];
 $targetFeedIdsText = implode("\n", array_map('strval', $targetFeedIds));
-$proxyUrl = $this->getUserConfigurationString('proxy_url') ?? 'https://images.example.com/?url=';
-$schemeHttp = $this->getUserConfigurationBool('scheme_http') ?? true;
-$schemeHttps = $this->getUserConfigurationBool('scheme_https') ?? false;
-$schemeDefault = $this->getUserConfigurationString('scheme_default') ?? 'auto';
-$schemeInclude = $this->getUserConfigurationBool('scheme_include') ?? false;
-$urlEncode = $this->getUserConfigurationBool('url_encode') ?? true;
+$proxyUrl = FreshRSS_Context::userConf()->attributeString('selective_image_proxy_url') ?? 'https://images.example.com/?url=';
+$schemeHttp = FreshRSS_Context::userConf()->attributeBool('selective_image_proxy_scheme_http') ?? true;
+$schemeHttps = FreshRSS_Context::userConf()->attributeBool('selective_image_proxy_scheme_https') ?? false;
+$schemeDefault = FreshRSS_Context::userConf()->attributeString('selective_image_proxy_scheme_default') ?? 'auto';
+$schemeInclude = FreshRSS_Context::userConf()->attributeBool('selective_image_proxy_scheme_include') ?? false;
+$urlEncode = FreshRSS_Context::userConf()->attributeBool('selective_image_proxy_url_encode') ?? true;
 ?>
 <form action="<?= _url('extension', 'configure', 'e', urlencode($this->getName())) ?>" method="post" data-auto-leave-validation="1">
     <input type="hidden" name="_csrf" value="<?= FreshRSS_Auth::csrfToken() ?>" />
