@@ -20,6 +20,7 @@ xExtension-SelectiveImageProxy
 
 - 填入目标 Feed ID 列表
 - 填入图片代理前缀
+- 确认需要代理的协议已勾选
 - 保存
 
 ## 注意

@@ -57,7 +57,8 @@ final class SelectiveImageProxyExtension extends Minz_Extension {
             return $entry;
         }
 
-        $entry->_content($this->swapUris($entry->content()));
+        $entry->_content($this->swapUris($entry->content(false)));
+        $this->swapAttributes($entry);
         return $entry;
     }
 
@@ -67,7 +68,8 @@ final class SelectiveImageProxyExtension extends Minz_Extension {
             return false;
         }
 
-        return in_array($entry->feedId(), $targetFeedIds, true);
+        $feedId = (int)$entry->feedId();
+        return $feedId > 0 && in_array($feedId, $targetFeedIds, true);
     }
 
     /**
@@ -125,6 +127,11 @@ final class SelectiveImageProxyExtension extends Minz_Extension {
     }
 
     private function getProxyImageUri(string $url): string {
+        $proxyUrl = $this->getConfiguredString(self::CONFIG_PROXY_URL, self::DEFAULT_PROXY_URL);
+        if ($proxyUrl !== '' && str_starts_with($url, $proxyUrl)) {
+            return $url;
+        }
+
         $parsedUrl = parse_url($url);
         $scheme = is_array($parsedUrl) ? strtolower($parsedUrl['scheme'] ?? '') : '';
 
@@ -171,7 +178,44 @@ final class SelectiveImageProxyExtension extends Minz_Extension {
             $url = rawurlencode($url);
         }
 
-        return $this->getConfiguredString(self::CONFIG_PROXY_URL, self::DEFAULT_PROXY_URL) . $url;
+        return $proxyUrl . $url;
+    }
+
+    private function swapAttributes(FreshRSS_Entry $entry): void {
+        $thumbnail = $entry->attributeArray('thumbnail');
+        if (is_array($thumbnail) && is_string($thumbnail['url'] ?? null)) {
+            $thumbnail['url'] = $this->getProxyImageUri($thumbnail['url']);
+            $entry->_attribute('thumbnail', $thumbnail);
+        }
+
+        $enclosures = $entry->attributeArray('enclosures');
+        if (!is_array($enclosures)) {
+            return;
+        }
+
+        foreach ($enclosures as &$enclosure) {
+            if (!is_array($enclosure)) {
+                continue;
+            }
+
+            if (is_string($enclosure['url'] ?? null)) {
+                $enclosure['url'] = $this->getProxyImageUri($enclosure['url']);
+            }
+
+            if (!is_array($enclosure['thumbnails'] ?? null)) {
+                continue;
+            }
+
+            foreach ($enclosure['thumbnails'] as &$thumbnailUrl) {
+                if (is_string($thumbnailUrl)) {
+                    $thumbnailUrl = $this->getProxyImageUri($thumbnailUrl);
+                }
+            }
+            unset($thumbnailUrl);
+        }
+        unset($enclosure);
+
+        $entry->_attribute('enclosures', $enclosures);
     }
 
     private function getProxySrcSet(string $srcSet): string {
