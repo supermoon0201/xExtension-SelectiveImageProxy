@@ -1,0 +1,8 @@
+{
+  "name": "Selective Image Proxy",
+  "author": "OpenAI",
+  "description": "Proxy article images only for selected FreshRSS feed IDs.",
+  "version": "0.1.0",
+  "entrypoint": "SelectiveImageProxy",
+  "type": "user"
+}
