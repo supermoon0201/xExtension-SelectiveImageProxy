@@ -10,17 +10,13 @@ final class SelectiveImageProxyExtension extends Minz_Extension {
     private const DEFAULT_SCHEME_INCLUDE = false;
     private const DEFAULT_URL_ENCODE = true;
 
-    #[\Override]
-    public function init(): void {
+    public function init() {
         parent::init();
-        $this->ensureDefaultConfiguration();
         $this->registerHook(Minz_HookType::EntryBeforeDisplay, [$this, 'setImageProxyHook']);
     }
 
-    #[\Override]
-    public function handleConfigureAction(): void {
+    public function handleConfigureAction() {
         parent::handleConfigureAction();
-        $this->ensureDefaultConfiguration();
 
         if (!Minz_Request::isPost()) {
             return;
@@ -112,28 +108,12 @@ final class SelectiveImageProxyExtension extends Minz_Extension {
         return $feedIds;
     }
 
-    private function ensureDefaultConfiguration(): void {
-        if ($this->getUserConfigurationString('proxy_url') === null) {
-            $this->setUserConfigurationValue('proxy_url', self::DEFAULT_PROXY_URL);
-        }
-        if ($this->getUserConfigurationArray('target_feed_ids') === null) {
-            $this->setUserConfigurationValue('target_feed_ids', []);
-        }
-        if ($this->getUserConfigurationBool('scheme_http') === null) {
-            $this->setUserConfigurationValue('scheme_http', self::DEFAULT_SCHEME_HTTP);
-        }
-        if ($this->getUserConfigurationBool('scheme_https') === null) {
-            $this->setUserConfigurationValue('scheme_https', self::DEFAULT_SCHEME_HTTPS);
-        }
-        if ($this->getUserConfigurationString('scheme_default') === null) {
-            $this->setUserConfigurationValue('scheme_default', self::DEFAULT_SCHEME_DEFAULT);
-        }
-        if ($this->getUserConfigurationBool('scheme_include') === null) {
-            $this->setUserConfigurationValue('scheme_include', self::DEFAULT_SCHEME_INCLUDE);
-        }
-        if ($this->getUserConfigurationBool('url_encode') === null) {
-            $this->setUserConfigurationValue('url_encode', self::DEFAULT_URL_ENCODE);
-        }
+    private function getConfiguredBool(string $key, bool $default): bool {
+        return $this->getUserConfigurationBool($key) ?? $default;
+    }
+
+    private function getConfiguredString(string $key, string $default): string {
+        return $this->getUserConfigurationString($key) ?? $default;
     }
 
     private function getProxyImageUri(string $url): string {
@@ -141,17 +121,17 @@ final class SelectiveImageProxyExtension extends Minz_Extension {
         $scheme = is_array($parsedUrl) ? strtolower($parsedUrl['scheme'] ?? '') : '';
 
         if ($scheme === 'http') {
-            if (!$this->getUserConfigurationBool('scheme_http')) {
+            if (!$this->getConfiguredBool('scheme_http', self::DEFAULT_SCHEME_HTTP)) {
                 return $url;
             }
-            if (!$this->getUserConfigurationBool('scheme_include')) {
+            if (!$this->getConfiguredBool('scheme_include', self::DEFAULT_SCHEME_INCLUDE)) {
                 $url = substr($url, 7);
             }
         } elseif ($scheme === 'https') {
-            if (!$this->getUserConfigurationBool('scheme_https')) {
+            if (!$this->getConfiguredBool('scheme_https', self::DEFAULT_SCHEME_HTTPS)) {
                 return $url;
             }
-            if (!$this->getUserConfigurationBool('scheme_include')) {
+            if (!$this->getConfiguredBool('scheme_include', self::DEFAULT_SCHEME_INCLUDE)) {
                 $url = substr($url, 8);
             }
         } elseif ($scheme === '') {
@@ -159,15 +139,15 @@ final class SelectiveImageProxyExtension extends Minz_Extension {
                 return $url;
             }
 
-            $schemeDefault = $this->getUserConfigurationString('scheme_default') ?? self::DEFAULT_SCHEME_DEFAULT;
+            $schemeDefault = $this->getConfiguredString('scheme_default', self::DEFAULT_SCHEME_DEFAULT);
             if ($schemeDefault === 'auto') {
-                if ($this->getUserConfigurationBool('scheme_include')) {
+                if ($this->getConfiguredBool('scheme_include', self::DEFAULT_SCHEME_INCLUDE)) {
                     $url = ((is_string($_SERVER['HTTPS'] ?? null) && strtolower($_SERVER['HTTPS']) !== 'off') ? 'https:' : 'http:') . $url;
                 } else {
                     $url = substr($url, 2);
                 }
             } elseif ($schemeDefault === 'http' || $schemeDefault === 'https') {
-                if ($this->getUserConfigurationBool('scheme_include')) {
+                if ($this->getConfiguredBool('scheme_include', self::DEFAULT_SCHEME_INCLUDE)) {
                     $url = $schemeDefault . ':' . $url;
                 } else {
                     $url = substr($url, 2);
@@ -179,11 +159,11 @@ final class SelectiveImageProxyExtension extends Minz_Extension {
             return $url;
         }
 
-        if ($this->getUserConfigurationBool('url_encode')) {
+        if ($this->getConfiguredBool('url_encode', self::DEFAULT_URL_ENCODE)) {
             $url = rawurlencode($url);
         }
 
-        return ($this->getUserConfigurationString('proxy_url') ?? self::DEFAULT_PROXY_URL) . $url;
+        return $this->getConfiguredString('proxy_url', self::DEFAULT_PROXY_URL) . $url;
     }
 
     private function getProxySrcSet(string $srcSet): string {
