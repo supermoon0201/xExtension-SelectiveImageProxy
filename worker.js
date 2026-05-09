@@ -16,8 +16,6 @@
 const DEFAULT_CONFIG = {
     selfURL: "", // to be filled later
     URLRegExp: "^(\\w+://.+?)/(.*)$",
-    // 从 https://sematext.com/ 申请并修改令牌
-    sematextToken: "",
     // 代理访问密钥。留空不校验；设置后请求必须带 ?key=同值
     proxyKey: "sumn_8880201",
     // 是否丢弃请求中的 Referer，在目标网站应用防盗链时有用
@@ -85,7 +83,6 @@ function getConfig(env = {}) {
         urlRegExp: new RegExp(config.URLRegExp),
         blockListLower: config.blockList.map((item) => item.toLowerCase()),
         typeListLower: config.typeList.map((item) => item.toLowerCase()),
-        hasSematext: config.sematextToken.trim() !== "",
     };
 
     runtimeConfigCache = {
@@ -123,10 +120,6 @@ function buildResponse(request, reqHeaders, ctx, runtimeConfig, body, init = {},
         statusText: init.statusText ?? "OK",
         headers,
     });
-
-    if (runtimeConfig.hasSematext) {
-        sematext.add(ctx, request, response, runtimeConfig);
-    }
 
     return response;
 }
@@ -318,67 +311,6 @@ function blockType(type, runtimeConfig) {
     const lowerType = type.toLowerCase();
     return !runtimeConfig.typeListLower.some((item) => lowerType.includes(item));
 }
-
-/**
- * 日志
- */
-const sematext = {
-
-    /**
-     * 构建发送主体
-     * @param {any} request
-     * @param {any} response
-     */
-    buildBody: (request, response) => {
-        const hua = request.headers.get("user-agent")
-        const hip = request.headers.get("cf-connecting-ip")
-        const hrf = request.headers.get("referer")
-        const url = new URL(request.url)
-
-        const body = {
-            method: request.method,
-            statusCode: response.status,
-            clientIp: hip,
-            referer: hrf,
-            userAgent: hua,
-            host: url.host,
-            path: url.pathname,
-            proxyHost: null,
-        }
-
-        if (body.path.includes(".") && body.path != "/" && !body.path.includes("favicon.ico")) {
-            try {
-                let purl = body.path.substring(1);
-                if (purl.includes("%")) {
-                    purl = decodeURIComponent(purl);
-                }
-                purl = fixUrl(purl);
-
-                body.path = purl;
-                body.proxyHost = new URL(purl).host;
-            } catch { }
-        }
-
-        return {
-            method: "POST",
-            body: JSON.stringify(body)
-        }
-    },
-
-    /**
-     * 添加
-     * @param {any} event
-     * @param {any} request
-     * @param {any} response
-     * @param {any} runtimeConfig
-     */
-    add: (event, request, response, runtimeConfig) => {
-        let url = `https://logsene-receiver.sematext.com/${runtimeConfig.sematextToken}/example/`;
-        const body = sematext.buildBody(request, response);
-
-        event.waitUntil(fetch(url, body).catch(() => {}))
-    }
-};
 
 export default {
     fetch: fetchHandler
