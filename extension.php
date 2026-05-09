@@ -12,7 +12,7 @@ final class SelectiveImageProxyExtension extends Minz_Extension {
 
     public function init() {
         parent::init();
-        $this->registerHook(Minz_HookType::EntryBeforeDisplay, [$this, 'setImageProxyHook']);
+        $this->registerHook('entry_before_display', [$this, 'setImageProxyHook']);
     }
 
     public function handleConfigureAction() {

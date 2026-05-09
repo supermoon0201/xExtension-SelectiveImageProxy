@@ -11,7 +11,7 @@ $schemeDefault = $this->getUserConfigurationString('scheme_default') ?? 'auto';
 $schemeInclude = $this->getUserConfigurationBool('scheme_include') ?? false;
 $urlEncode = $this->getUserConfigurationBool('url_encode') ?? true;
 ?>
-<form method="post" data-auto-leave-validation="1">
+<form action="<?= _url('extension', 'configure', 'e', urlencode($this->getName())) ?>" method="post" data-auto-leave-validation="1">
     <input type="hidden" name="_csrf" value="<?= FreshRSS_Auth::csrfToken() ?>" />
 
     <div class="form-group">
